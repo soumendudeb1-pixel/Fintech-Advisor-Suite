@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "KnowEdge - AI Financial Advisor"
+version = "1.0.0"
+id = "artifacts/knowedge"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18475
+
+[services.development]
+run = "pnpm --filter @workspace/knowedge run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/knowedge", "run", "build" ]
+publicDir = "artifacts/knowedge/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18475"
+BASE_PATH = "/"

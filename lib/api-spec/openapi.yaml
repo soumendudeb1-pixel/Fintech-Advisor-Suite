@@ -1,0 +1,682 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: KnowEdge AI Financial Advisor API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: stocks
+    description: Stock market operations
+  - name: calculator
+    description: Financial calculator operations
+  - name: ai
+    description: AI analysis operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /stocks/search:
+    get:
+      operationId: searchStocks
+      tags: [stocks]
+      summary: Search stocks by symbol or name
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockSearchResult"
+
+  /stocks/{symbol}:
+    get:
+      operationId: getStockDetails
+      tags: [stocks]
+      summary: Get stock details
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockDetails"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stocks/{symbol}/history:
+    get:
+      operationId: getStockHistory
+      tags: [stocks]
+      summary: Get historical stock price data
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [1W, 1M, 3M, 6M, 1Y]
+            default: 1M
+      responses:
+        "200":
+          description: Historical price data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockHistory"
+
+  /stocks/{symbol}/analysis:
+    get:
+      operationId: getStockAnalysis
+      tags: [stocks]
+      summary: Get AI probability analysis for a stock
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock analysis with probability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockAnalysis"
+
+  /stocks/market/summary:
+    get:
+      operationId: getMarketSummary
+      tags: [stocks]
+      summary: Get overall market summary and top movers
+      responses:
+        "200":
+          description: Market summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketSummary"
+
+  /calculator/pocket-money:
+    post:
+      operationId: calculatePocketMoney
+      tags: [calculator]
+      summary: Calculate remaining fun money after expenses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PocketMoneyInput"
+      responses:
+        "200":
+          description: Calculation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PocketMoneyResult"
+
+  /calculator/salary:
+    post:
+      operationId: calculateSalary
+      tags: [calculator]
+      summary: Calculate take-home pay after taxes and deductions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalaryInput"
+      responses:
+        "200":
+          description: Salary breakdown result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalaryResult"
+
+  /calculator/retirement:
+    post:
+      operationId: calculateRetirement
+      tags: [calculator]
+      summary: Calculate retirement withdrawal strategy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetirementInput"
+      responses:
+        "200":
+          description: Retirement strategy result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetirementResult"
+
+  /ai/financial-advice:
+    post:
+      operationId: getFinancialAdvice
+      tags: [ai]
+      summary: Get AI-powered personalized financial advice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinancialAdviceInput"
+      responses:
+        "200":
+          description: AI financial advice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialAdviceResult"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    StockSearchResult:
+      type: object
+      properties:
+        symbol:
+          type: string
+        name:
+          type: string
+        exchange:
+          type: string
+        type:
+          type: string
+      required:
+        - symbol
+        - name
+        - exchange
+        - type
+
+    StockDetails:
+      type: object
+      properties:
+        symbol:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        change:
+          type: number
+        changePercent:
+          type: number
+        volume:
+          type: number
+        marketCap:
+          type: ["number", "null"]
+        high52w:
+          type: number
+        low52w:
+          type: number
+        pe:
+          type: ["number", "null"]
+        dividend:
+          type: ["number", "null"]
+        description:
+          type: string
+      required:
+        - symbol
+        - name
+        - price
+        - change
+        - changePercent
+        - volume
+        - high52w
+        - low52w
+        - description
+
+    PricePoint:
+      type: object
+      properties:
+        date:
+          type: string
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
+          type: number
+      required:
+        - date
+        - open
+        - high
+        - low
+        - close
+        - volume
+
+    StockHistory:
+      type: object
+      properties:
+        symbol:
+          type: string
+        period:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PricePoint"
+      required:
+        - symbol
+        - period
+        - data
+
+    StockAnalysis:
+      type: object
+      properties:
+        symbol:
+          type: string
+        overallSentiment:
+          type: string
+          enum: [bullish, bearish, neutral]
+        probabilityIncrease:
+          type: number
+          description: Probability of price increase (0-100)
+        probabilityDecrease:
+          type: number
+          description: Probability of price decrease (0-100)
+        probabilityNeutral:
+          type: number
+          description: Probability of price staying neutral (0-100)
+        signals:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisSignal"
+        recommendation:
+          type: string
+        riskLevel:
+          type: string
+          enum: [low, medium, high]
+        confidence:
+          type: number
+        summary:
+          type: string
+      required:
+        - symbol
+        - overallSentiment
+        - probabilityIncrease
+        - probabilityDecrease
+        - probabilityNeutral
+        - signals
+        - recommendation
+        - riskLevel
+        - confidence
+        - summary
+
+    AnalysisSignal:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+        impact:
+          type: string
+          enum: [positive, negative, neutral]
+        description:
+          type: string
+      required:
+        - name
+        - value
+        - impact
+        - description
+
+    MarketMover:
+      type: object
+      properties:
+        symbol:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        changePercent:
+          type: number
+      required:
+        - symbol
+        - name
+        - price
+        - changePercent
+
+    IndexData:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+        change:
+          type: number
+        changePercent:
+          type: number
+      required:
+        - name
+        - value
+        - change
+        - changePercent
+
+    MarketSummary:
+      type: object
+      properties:
+        indices:
+          type: array
+          items:
+            $ref: "#/components/schemas/IndexData"
+        topGainers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketMover"
+        topLosers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketMover"
+        marketStatus:
+          type: string
+          enum: [open, closed, pre-market, after-hours]
+        lastUpdated:
+          type: string
+      required:
+        - indices
+        - topGainers
+        - topLosers
+        - marketStatus
+        - lastUpdated
+
+    Expense:
+      type: object
+      properties:
+        name:
+          type: string
+        amount:
+          type: number
+        category:
+          type: string
+      required:
+        - name
+        - amount
+        - category
+
+    PocketMoneyInput:
+      type: object
+      properties:
+        monthlyAllowance:
+          type: number
+        expenses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expense"
+        savingsGoal:
+          type: ["number", "null"]
+        savingsGoalName:
+          type: ["string", "null"]
+      required:
+        - monthlyAllowance
+        - expenses
+
+    ExpenseBreakdown:
+      type: object
+      properties:
+        category:
+          type: string
+        total:
+          type: number
+        percentage:
+          type: number
+      required:
+        - category
+        - total
+        - percentage
+
+    PocketMoneyResult:
+      type: object
+      properties:
+        monthlyAllowance:
+          type: number
+        totalExpenses:
+          type: number
+        remainingFunMoney:
+          type: number
+        savingsAmount:
+          type: ["number", "null"]
+        remainingAfterSavings:
+          type: ["number", "null"]
+        daysToGoal:
+          type: ["number", "null"]
+        expenseBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpenseBreakdown"
+        tips:
+          type: array
+          items:
+            type: string
+      required:
+        - monthlyAllowance
+        - totalExpenses
+        - remainingFunMoney
+        - expenseBreakdown
+        - tips
+
+    SalaryInput:
+      type: object
+      properties:
+        grossSalary:
+          type: number
+        payPeriod:
+          type: string
+          enum: [annual, monthly, biweekly, weekly]
+        filingStatus:
+          type: string
+          enum: [single, married, head-of-household]
+        state:
+          type: string
+        additionalDeductions:
+          type: ["number", "null"]
+        retirement401k:
+          type: ["number", "null"]
+          description: 401k contribution percentage
+      required:
+        - grossSalary
+        - payPeriod
+        - filingStatus
+        - state
+
+    TaxBreakdown:
+      type: object
+      properties:
+        federal:
+          type: number
+        state:
+          type: number
+        socialSecurity:
+          type: number
+        medicare:
+          type: number
+        total:
+          type: number
+      required:
+        - federal
+        - state
+        - socialSecurity
+        - medicare
+        - total
+
+    SalaryResult:
+      type: object
+      properties:
+        grossSalary:
+          type: number
+        grossMonthly:
+          type: number
+        netAnnual:
+          type: number
+        netMonthly:
+          type: number
+        netBiweekly:
+          type: number
+        effectiveTaxRate:
+          type: number
+        marginalTaxRate:
+          type: number
+        taxes:
+          $ref: "#/components/schemas/TaxBreakdown"
+        retirement401kContribution:
+          type: ["number", "null"]
+        takeHomeMessage:
+          type: string
+      required:
+        - grossSalary
+        - grossMonthly
+        - netAnnual
+        - netMonthly
+        - netBiweekly
+        - effectiveTaxRate
+        - marginalTaxRate
+        - taxes
+        - takeHomeMessage
+
+    RetirementInput:
+      type: object
+      properties:
+        portfolioValue:
+          type: number
+        monthlyPension:
+          type: ["number", "null"]
+        monthlyExpenses:
+          type: number
+        age:
+          type: number
+        withdrawalRate:
+          type: ["number", "null"]
+          description: Annual withdrawal rate percentage (default 4)
+      required:
+        - portfolioValue
+        - monthlyExpenses
+        - age
+
+    RetirementResult:
+      type: object
+      properties:
+        portfolioValue:
+          type: number
+        monthlyIncome:
+          type: number
+        monthlyExpenses:
+          type: number
+        monthlySurplusDeficit:
+          type: number
+        sustainableYears:
+          type: ["number", "null"]
+        recommendedWithdrawal:
+          type: number
+        safeWithdrawalAmount:
+          type: number
+        strategies:
+          type: array
+          items:
+            type: string
+        portfolioHealth:
+          type: string
+          enum: [excellent, good, fair, at-risk]
+      required:
+        - portfolioValue
+        - monthlyIncome
+        - monthlyExpenses
+        - monthlySurplusDeficit
+        - recommendedWithdrawal
+        - safeWithdrawalAmount
+        - strategies
+        - portfolioHealth
+
+    FinancialAdviceInput:
+      type: object
+      properties:
+        userMode:
+          type: string
+          enum: [student, career, retiree]
+        question:
+          type: string
+        context:
+          type: ["string", "null"]
+      required:
+        - userMode
+        - question
+
+    FinancialAdviceResult:
+      type: object
+      properties:
+        advice:
+          type: string
+        tips:
+          type: array
+          items:
+            type: string
+        relatedTopics:
+          type: array
+          items:
+            type: string
+      required:
+        - advice
+        - tips
+        - relatedTopics
