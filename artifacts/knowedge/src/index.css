@@ -66,13 +66,11 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE */
+/* ── LIGHT MODE ───────────────────────────────────────────────────────────── */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
-
   --opaque-button-border-intensity: -8;
-
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
@@ -115,7 +113,7 @@
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .5rem;
-  
+
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -125,16 +123,15 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+/* ── DARK MODE ────────────────────────────────────────────────────────────── */
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
-
   --opaque-button-border-intensity: 9;
-
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  /* Deep Navy background for premium fintech */
+  /* Deep Navy — premium fintech */
   --background: 216 28% 7%;
   --foreground: 210 40% 98%;
   --border: 212 12% 21%;
@@ -164,15 +161,16 @@
   --destructive-foreground: 210 40% 98%;
   --input: 212 12% 21%;
   --ring: 217 91% 60%;
-  
-  /* Electric green and blue chart colors */
-  --chart-1: 152 76% 53%; /* Emerald */
-  --chart-2: 217 91% 60%; /* Blue */
-  --chart-3: 199 89% 48%; /* Light Blue */
-  --chart-4: 280 65% 60%; /* Purple */
-  --chart-5: 340 75% 55%; /* Pink */
+
+  /* Electric chart palette */
+  --chart-1: 152 76% 53%;
+  --chart-2: 217 91% 60%;
+  --chart-3: 199 89% 48%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
 }
 
+/* ── BASE ─────────────────────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border;
@@ -181,8 +179,30 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  /* Smooth scrolling everywhere */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
 }
 
+/* ── UTILITIES ────────────────────────────────────────────────────────────── */
 @layer utilities {
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
@@ -192,6 +212,8 @@
     color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
+
+  /* Elevation overlays */
   .toggle-elevate::before,
   .toggle-elevate-2::before {
     content: "";
@@ -204,9 +226,8 @@
   .toggle-elevate.toggle-elevated::before {
     background-color: var(--elevate-2);
   }
-  .border.toggle-elevate::before {
-    inset: -1px;
-  }
+  .border.toggle-elevate::before { inset: -1px; }
+
   .hover-elevate:not(.no-default-hover-elevate),
   .active-elevate:not(.no-default-active-elevate),
   .hover-elevate-2:not(.no-default-hover-elevate),
@@ -236,8 +257,85 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
   .border.active-elevate:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
+  .border.active-elevate-2:not(.no-active-interaction-elevate)::after {
     inset: -1px;
   }
+
+  /* ── Card hover lift ───────────────────────────────────────────────────── */
+  .card-hover {
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px -8px hsl(var(--primary) / 0.15);
+  }
+
+  /* ── Gradient text ─────────────────────────────────────────────────────── */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+  }
+
+  /* ── Ambient glow behind elements ──────────────────────────────────────── */
+  .glow-primary {
+    box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.35);
+  }
+  .glow-sm {
+    box-shadow: 0 0 20px -6px hsl(var(--primary) / 0.25);
+  }
+
+  /* ── Gradient borders via pseudo-elements ──────────────────────────────── */
+  .grad-border {
+    position: relative;
+  }
+  .grad-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.5), transparent 60%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* ── Animated shimmer for loading states ───────────────────────────────── */
+  @keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .shimmer {
+    background: linear-gradient(90deg, transparent, hsl(var(--muted) / 0.6), transparent);
+    background-size: 400px 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+
+  /* ── Subtle mesh background pattern ────────────────────────────────────── */
+  .bg-mesh {
+    background-image:
+      radial-gradient(circle at 20% 20%, hsl(var(--primary) / 0.06) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, hsl(217 91% 70% / 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 60% 10%, hsl(280 65% 60% / 0.04) 0%, transparent 40%);
+  }
+
+  /* ── Calculator gradient themes ────────────────────────────────────────── */
+  .calc-grad-student {
+    background: linear-gradient(135deg, hsl(271 76% 53% / 0.12), hsl(264 60% 40% / 0.06));
+  }
+  .calc-grad-career {
+    background: linear-gradient(135deg, hsl(217 91% 60% / 0.12), hsl(230 80% 45% / 0.06));
+  }
+  .calc-grad-retiree {
+    background: linear-gradient(135deg, hsl(38 92% 50% / 0.12), hsl(25 85% 45% / 0.06));
+  }
+  .calc-grad-sip {
+    background: linear-gradient(135deg, hsl(152 76% 40% / 0.12), hsl(173 70% 35% / 0.06));
+  }
+
+  /* Border accent stripe at card top */
+  .calc-stripe-student { border-top: 2px solid hsl(271 76% 53% / 0.7); }
+  .calc-stripe-career  { border-top: 2px solid hsl(217 91% 60% / 0.7); }
+  .calc-stripe-retiree { border-top: 2px solid hsl(38 92% 50% / 0.7); }
+  .calc-stripe-sip     { border-top: 2px solid hsl(152 76% 40% / 0.7); }
 }

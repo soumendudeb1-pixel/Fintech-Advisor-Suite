@@ -224,10 +224,12 @@ function StudentCalculator() {
   return (
     <div className="grid md:grid-cols-2 gap-6 items-start">
       {/* Form */}
-      <Card className="border-border/50 bg-card/50 backdrop-blur">
+      <Card className="border-border/50 bg-card/50 backdrop-blur card-hover calc-stripe-student calc-grad-student overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" />
+            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-violet-500/15 border border-violet-500/25">
+              <GraduationCap className="h-4 w-4 text-violet-400" />
+            </span>
             Pocket Money Planner
           </CardTitle>
           <CardDescription>Track allowance and build your first savings habit.</CardDescription>
@@ -327,7 +329,7 @@ function StudentCalculator() {
         )}
         {!loading && result && (
           <motion.div key="result" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <Card className="border-primary/20 bg-primary/5">
+            <Card className="border-violet-500/20 calc-stripe-student card-hover overflow-hidden" style={{ background: "linear-gradient(160deg, hsl(271 76% 53% / 0.08), hsl(var(--card)))" }}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Budget Results
@@ -458,10 +460,12 @@ function CareerCalculator() {
   return (
     <div className="grid md:grid-cols-2 gap-6 items-start">
       {/* Form */}
-      <Card className="border-border/50 bg-card/50 backdrop-blur">
+      <Card className="border-border/50 bg-card/50 backdrop-blur card-hover calc-stripe-career calc-grad-career overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Briefcase className="h-5 w-5 text-primary" />
+            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/25">
+              <Briefcase className="h-4 w-4 text-blue-400" />
+            </span>
             Salary & Tax Calculator
           </CardTitle>
           <CardDescription>Indian income tax for FY 2024-25 with new &amp; old regime comparison.</CardDescription>
@@ -533,7 +537,7 @@ function CareerCalculator() {
         )}
         {!loading && result && (
           <motion.div key="result" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <Card className="border-primary/20 bg-primary/5">
+            <Card className="border-blue-500/20 calc-stripe-career card-hover overflow-hidden" style={{ background: "linear-gradient(160deg, hsl(217 91% 60% / 0.08), hsl(var(--card)))" }}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Tax Breakdown
@@ -648,10 +652,12 @@ function RetireeCalculator() {
   return (
     <div className="grid md:grid-cols-2 gap-6 items-start">
       {/* Form */}
-      <Card className="border-border/50 bg-card/50 backdrop-blur">
+      <Card className="border-border/50 bg-card/50 backdrop-blur card-hover calc-stripe-retiree calc-grad-retiree overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Home className="h-5 w-5 text-primary" />
+            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/25">
+              <Home className="h-4 w-4 text-amber-400" />
+            </span>
             Retirement Withdrawal Planner
           </CardTitle>
           <CardDescription>Model corpus longevity with Indian instruments like SCSS &amp; bucket strategy.</CardDescription>
@@ -718,7 +724,7 @@ function RetireeCalculator() {
         )}
         {!loading && result && health && (
           <motion.div key="result" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <Card className="border-primary/20 bg-primary/5">
+            <Card className="border-amber-500/20 calc-stripe-retiree card-hover overflow-hidden" style={{ background: "linear-gradient(160deg, hsl(38 92% 50% / 0.08), hsl(var(--card)))" }}>
               <CardHeader>
                 <CardTitle>Retirement Health</CardTitle>
               </CardHeader>
@@ -821,10 +827,12 @@ function SipCalculator() {
   return (
     <div className="grid md:grid-cols-2 gap-6 items-start">
       {/* Form */}
-      <Card className="border-border/50 bg-card/50 backdrop-blur">
+      <Card className="border-border/50 bg-card/50 backdrop-blur card-hover calc-stripe-sip calc-grad-sip overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
+            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25">
+              <TrendingUp className="h-4 w-4 text-emerald-400" />
+            </span>
             SIP Calculator
           </CardTitle>
           <CardDescription>Project your mutual fund SIP with step-up &amp; inflation adjustment.</CardDescription>
@@ -884,7 +892,7 @@ function SipCalculator() {
         )}
         {!loading && result && (
           <motion.div key="result" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <Card className="border-primary/20 bg-primary/5">
+            <Card className="border-emerald-500/20 calc-stripe-sip card-hover overflow-hidden" style={{ background: "linear-gradient(160deg, hsl(152 76% 40% / 0.08), hsl(var(--card)))" }}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   SIP Projection
