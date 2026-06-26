@@ -16,7 +16,7 @@
 
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { generateAiResponse, KNOWEDGE_SYSTEM_PROMPT } from "../services/aiService";
+import { generateCalculatorAdvice, type CalculatorType } from "../services/aiService";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -570,59 +570,220 @@ function calcSip(input: SipInput): SipResult {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AI PROMPT BUILDERS
+// AI PROMPT BUILDERS  (rich context so LLM can reason deeply)
 // ═══════════════════════════════════════════════════════════════════════════
 
 function pocketMoneyPrompt(r: PocketMoneyResult): string {
-  const bd = r.expenseBreakdown.map((e) => `${e.category} ${inr(e.amount)} (${e.percentage}%)`).join(", ");
-  return (
-    `Student pocket money analysis (Indian Rupees):\n` +
-    `Monthly allowance: ${inr(r.monthlyAllowance)}, Total expenses: ${inr(r.totalExpenses)}, Balance: ${inr(r.balance)}\n` +
-    `Savings (${r.savingsRate}% of balance): ${inr(r.savingsAmount)}, Spending money: ${inr(r.spendingMoney)}\n` +
-    `Expense breakdown: ${bd}\n` +
-    (r.savingsGoal ? `Savings goal: ${inr(r.savingsGoal)}${r.savingsGoalName ? ` (${r.savingsGoalName})` : ""} — reach in ~${r.monthsToGoal} months\n` : "") +
-    `Budget health score: ${r.budgetScore}/100\n` +
-    `Alerts: ${r.alerts.length > 0 ? r.alerts.join("; ") : "None"}\n\n` +
-    `Please give specific, actionable advice for this Indian student: what to cut, how to save better, and a motivating next step. Keep it under 150 words.`
-  );
+  const bd = r.expenseBreakdown
+    .sort((a, b) => b.amount - a.amount)
+    .map((e) => `  • ${e.category}: ${inr(e.amount)} (${e.percentage}% of expenses)`)
+    .join("\n");
+  const bigCat = r.expenseBreakdown.sort((a, b) => b.amount - a.amount)[0];
+  const expenseRatioPct = r.monthlyAllowance > 0
+    ? ((r.totalExpenses / r.monthlyAllowance) * 100).toFixed(0) : "0";
+
+  return [
+    "=== STUDENT BUDGET ANALYSIS (Indian Rupees) ===",
+    `Monthly allowance : ${inr(r.monthlyAllowance)}`,
+    `Total expenses    : ${inr(r.totalExpenses)} (${expenseRatioPct}% of allowance)`,
+    `Balance remaining : ${inr(r.balance)}`,
+    `Savings amount    : ${inr(r.savingsAmount)} (${r.savingsRate}% of balance)`,
+    `Spending money    : ${inr(r.spendingMoney)}`,
+    `Budget score      : ${r.budgetScore}/100`,
+    "",
+    "Expense breakdown (largest first):",
+    bd,
+    "",
+    r.savingsGoal
+      ? `Savings goal: ${inr(r.savingsGoal)}${r.savingsGoalName ? ` for "${r.savingsGoalName}"` : ""} — estimated ${r.monthsToGoal} months at current rate`
+      : "No savings goal set.",
+    "",
+    `Alerts: ${r.alerts.length > 0 ? r.alerts.join(" | ") : "None"}`,
+    `Biggest expense category: ${bigCat?.category ?? "N/A"} at ${inr(bigCat?.amount ?? 0)}`,
+    "",
+    "Using the data above, respond with the 4-section format.",
+    "Explain what the numbers mean for this student's financial health.",
+    "Flag specific risks (e.g. overspending, no emergency buffer).",
+    "Suggest 3 concrete improvements using the actual figures.",
+    "Give one actionable next step with a specific rupee amount.",
+  ].join("\n");
+}
+
+function pocketMoneyMetrics(r: PocketMoneyResult): Record<string, number | string> {
+  const sorted = [...r.expenseBreakdown].sort((a, b) => b.amount - a.amount);
+  return {
+    monthlyAllowance:       r.monthlyAllowance,
+    totalExpenses:          r.totalExpenses,
+    balance:                r.balance,
+    savingsAmount:          r.savingsAmount,
+    spendingMoney:          r.spendingMoney,
+    savingsRate:            r.savingsRate,
+    budgetScore:            r.budgetScore,
+    biggestCategory:        sorted[0]?.category ?? "",
+    biggestCategoryAmount:  sorted[0]?.amount   ?? 0,
+    monthsToGoal:           r.monthsToGoal ?? "",
+    savingsGoalName:        r.savingsGoalName ?? "",
+    savingsGoal:            r.savingsGoal ?? 0,
+  };
 }
 
 function salariedPrompt(r: SalariedResult): string {
-  return (
-    `Indian salary tax analysis (FY 2024-25):\n` +
-    `Gross annual CTC: ${inr(r.grossAnnualSalary)} | Regime: ${r.regime === "new" ? "New (default)" : "Old"}\n` +
-    `Deductions: ${inr(r.totalDeductions)} | Taxable income: ${inr(r.taxableIncome)}\n` +
-    `Income tax: ${inr(r.totalTaxPayable)} (effective rate: ${r.effectiveTaxRate}%, marginal: ${r.marginalTaxRate}%)\n` +
-    `Breakdown — Cess: ${inr(r.cess)}, 87A rebate: ${inr(r.regime87ARebate)}, EPF: ${inr(r.epfContributionAnnual)}/year\n` +
-    `Net take-home: ${inr(r.netMonthlyTakeHome)}/month (${inr(r.netAnnualTakeHome)}/year)\n\n` +
-    `Please advise: should they switch regimes? What deductions can reduce tax? Specific Section 80C/80D/NPS suggestions. 150 words max.`
-  );
+  const slabs = r.taxBracketDetail
+    .map((b) => `  • ${b.slab} @ ${b.rate} → tax ${inr(b.tax)}`)
+    .join("\n");
+  const unused80c = Math.max(0, 150_000 - (r.totalDeductions - r.standardDeduction - r.epfContributionAnnual));
+
+  return [
+    "=== INDIAN SALARY TAX ANALYSIS (FY 2024-25) ===",
+    `Gross annual CTC       : ${inr(r.grossAnnualSalary)} (${inr(r.grossMonthlySalary)}/month)`,
+    `Tax regime             : ${r.regime === "new" ? "New regime (FY24 Budget)" : "Old regime"}`,
+    `Standard deduction     : ${inr(r.standardDeduction)}`,
+    `EPF contribution       : ${inr(r.epfContributionAnnual)}/year (${inr(r.epfContributionMonthly)}/month)`,
+    `Total deductions       : ${inr(r.totalDeductions)}`,
+    `Taxable income         : ${inr(r.taxableIncome)}`,
+    "",
+    "Tax computation:",
+    slabs || "  • Fully exempt (no taxable income in brackets)",
+    `  Section 87A rebate   : ${inr(r.regime87ARebate)}`,
+    `  Surcharge            : ${inr(r.surcharge)}`,
+    `  Cess (4%)            : ${inr(r.cess)}`,
+    `  Total tax payable    : ${inr(r.totalTaxPayable)}`,
+    `  Effective rate       : ${r.effectiveTaxRate}%`,
+    `  Marginal rate        : ${r.marginalTaxRate}%`,
+    "",
+    `Net annual take-home   : ${inr(r.netAnnualTakeHome)}`,
+    `Net monthly take-home  : ${inr(r.netMonthlyTakeHome)}`,
+    `Unused 80C capacity    : ${inr(unused80c)} (potential annual tax saving: ${inr(Math.round(unused80c * r.marginalTaxRate / 100))})`,
+    "",
+    "Using the data above, respond with the 4-section format.",
+    "Explain what the effective vs marginal rate means in plain language.",
+    "Identify tax risks (unused deductions, wrong regime choice).",
+    "Suggest 3 specific actions using actual rupee amounts (80C/80D/NPS).",
+    "Give one concrete next step this week.",
+  ].join("\n");
+}
+
+function salariedMetrics(r: SalariedResult): Record<string, number | string> {
+  return {
+    grossAnnualSalary:      r.grossAnnualSalary,
+    taxableIncome:          r.taxableIncome,
+    totalTaxPayable:        r.totalTaxPayable,
+    effectiveTaxRate:       r.effectiveTaxRate,
+    marginalTaxRate:        r.marginalTaxRate,
+    netMonthlyTakeHome:     r.netMonthlyTakeHome,
+    netAnnualTakeHome:      r.netAnnualTakeHome,
+    epfContributionAnnual:  r.epfContributionAnnual,
+    regime:                 r.regime,
+    regime87ARebate:        r.regime87ARebate,
+    section80c:             Math.max(0, r.totalDeductions - r.standardDeduction - r.epfContributionAnnual),
+    npsContribution:        0,
+  };
 }
 
 function retiredPrompt(r: RetiredResult): string {
-  return (
-    `Indian retirement corpus analysis:\n` +
-    `Portfolio: ${inr(r.portfolioValue)} | Monthly pension/income: ${inr(r.monthlyPension)}\n` +
-    `Monthly withdrawal (${r.withdrawalRate}% rate): ${inr(r.monthlyWithdrawal)} | Total monthly income: ${inr(r.totalMonthlyIncome)}\n` +
-    `Monthly expenses: ${inr(r.monthlyExpenses)} | Surplus/deficit: ${inr(r.monthlySurplusDeficit)}\n` +
-    `Portfolio health: ${r.portfolioHealth} | Corpus lasts: ${r.sustainableYears !== null ? `${r.sustainableYears} years` : "50+ years"}\n` +
-    `Required corpus for full coverage: ${inr(r.corpusRequired)} | Shortfall: ${inr(r.corpusShortfall)}\n` +
-    `SCSS potential: invest ${inr(r.scss.maxInvestment)} → ${inr(r.scss.quarterlyIncome)}/quarter guaranteed\n\n` +
-    `Please advise on: best withdrawal strategy, which Indian instruments to use (SCSS/FD/MF/bonds), and how to make the corpus last longer. 150 words max.`
-  );
+  const proj = r.yearlyProjection.slice(0, 10)
+    .map((y) => `  Year ${y.year}: corpus ${inr(y.corpus)}, withdrawal ${inr(y.withdrawal)}`)
+    .join("\n");
+  const isDeficit = r.monthlySurplusDeficit < 0;
+
+  return [
+    "=== INDIAN RETIREMENT CORPUS ANALYSIS ===",
+    `Portfolio value        : ${inr(r.portfolioValue)}`,
+    `Monthly pension income : ${inr(r.monthlyPension)}`,
+    `Monthly portfolio draw : ${inr(r.monthlyWithdrawal)} (at ${r.withdrawalRate}% annual rate)`,
+    `Total monthly income   : ${inr(r.totalMonthlyIncome)}`,
+    `Monthly expenses       : ${inr(r.monthlyExpenses)}`,
+    `Monthly surplus/deficit: ${isDeficit ? "-" : "+"}${inr(Math.abs(r.monthlySurplusDeficit))} ${isDeficit ? "(SHORTFALL)" : "(SURPLUS)"}`,
+    "",
+    `Portfolio health       : ${r.portfolioHealth.toUpperCase()}`,
+    `Corpus sustainable for : ${r.sustainableYears !== null ? `~${r.sustainableYears} years` : "50+ years"}`,
+    `Required corpus (full) : ${inr(r.corpusRequired)}`,
+    `Corpus shortfall       : ${inr(r.corpusShortfall)}`,
+    "",
+    "SCSS opportunity:",
+    `  Max investment : ${inr(r.scss.maxInvestment)} (capped at ₹30L)`,
+    `  Annual income  : ${inr(r.scss.annualIncome)} at 8.2% p.a.`,
+    `  Quarterly payout: ${inr(r.scss.quarterlyIncome)}`,
+    "",
+    "10-year corpus projection:",
+    proj,
+    "",
+    "Using the data above, respond with the 4-section format.",
+    "Explain what portfolio health means and the shortfall/surplus impact.",
+    "Identify risks: sequence of returns, inflation erosion, longevity.",
+    "Suggest 3 instrument-specific improvements (SCSS, RBI bonds, bucket strategy).",
+    "Give one action they can take at a bank or post office this week.",
+  ].join("\n");
+}
+
+function retiredMetrics(r: RetiredResult): Record<string, number | string> {
+  return {
+    portfolioValue:         r.portfolioValue,
+    monthlyPension:         r.monthlyPension,
+    monthlyWithdrawal:      r.monthlyWithdrawal,
+    totalMonthlyIncome:     r.totalMonthlyIncome,
+    monthlyExpenses:        r.monthlyExpenses,
+    monthlySurplusDeficit:  r.monthlySurplusDeficit,
+    portfolioHealth:        r.portfolioHealth,
+    sustainableYears:       r.sustainableYears ?? "",
+    corpusRequired:         r.corpusRequired,
+    corpusShortfall:        r.corpusShortfall,
+    scssMaxInvestment:      r.scss.maxInvestment,
+    scssAnnualIncome:       r.scss.annualIncome,
+    scssQuarterlyIncome:    r.scss.quarterlyIncome,
+    withdrawalRate:         r.withdrawalRate,
+  };
 }
 
 function sipPrompt(r: SipResult): string {
-  return (
-    `Indian SIP projection:\n` +
-    `Monthly SIP: ${inr(r.monthlyAmount)}${r.stepUpPercent > 0 ? ` with ${r.stepUpPercent}% annual step-up` : " (flat)"}\n` +
-    `Duration: ${r.investmentYears} years | Return: ${r.annualReturnRate}% p.a.\n` +
-    `Total invested: ${inr(r.totalInvested)} | Estimated returns: ${inr(r.estimatedReturns)}\n` +
-    `Maturity value: ${inr(r.maturityValue)} | Wealth ratio: ${r.wealthRatio}×\n` +
-    `Inflation-adjusted value (at ${r.inflationRate}%): ${inr(r.realValue)}\n` +
-    (r.milestones.length > 0 ? `Milestones: ${r.milestones.map((m) => `${m.label} in year ${m.year}`).join(", ")}\n` : "") +
-    `\nPlease advise: is this SIP amount sufficient? Should they step up? Which fund categories (large-cap, flexi-cap, ELSS) suit this goal? How to optimise? 150 words max.`
-  );
+  const msText = r.milestones.map((m) => `${m.label} at year ${m.year}`).join(", ");
+  const yr5  = r.yearWiseBreakdown.find((y) => y.year === 5);
+  const yr10 = r.yearWiseBreakdown.find((y) => y.year === 10);
+  const yr15 = r.yearWiseBreakdown.find((y) => y.year === 15);
+
+  return [
+    "=== INDIAN SIP PROJECTION ===",
+    `Monthly SIP amount     : ${inr(r.monthlyAmount)}${r.stepUpPercent > 0 ? ` with ${r.stepUpPercent}% annual step-up` : " (flat — no step-up)"}`,
+    `Investment duration    : ${r.investmentYears} years (${r.totalMonths} months)`,
+    `Expected return        : ${r.annualReturnRate}% p.a. (monthly compounding)`,
+    `Inflation assumption   : ${r.inflationRate}% p.a.`,
+    "",
+    `Total amount invested  : ${inr(r.totalInvested)}`,
+    `Estimated returns      : ${inr(r.estimatedReturns)}`,
+    `Maturity value (nominal): ${inr(r.maturityValue)}`,
+    `Wealth ratio           : ${r.wealthRatio}× (every ₹1 invested grows to ₹${r.wealthRatio})`,
+    `Real value (inflation-adj): ${inr(r.realValue)} — actual purchasing power`,
+    `Inflation erosion      : ${inr(r.maturityValue - r.realValue)} lost to inflation`,
+    "",
+    "Corpus at key checkpoints:",
+    yr5  ? `  Year  5: portfolio ${inr(yr5.portfolioValue)}, gains ${inr(yr5.gains)}` : "",
+    yr10 ? `  Year 10: portfolio ${inr(yr10.portfolioValue)}, gains ${inr(yr10.gains)}` : "",
+    yr15 ? `  Year 15: portfolio ${inr(yr15.portfolioValue)}, gains ${inr(yr15.gains)}` : "",
+    "",
+    msText ? `Milestones: ${msText}` : "No major milestones reached.",
+    "",
+    "Using the data above, respond with the 4-section format.",
+    "Explain the power of compounding and what the wealth ratio means.",
+    "Identify risks: return rate realism, inflation erosion, flat SIP vs step-up.",
+    "Suggest 3 fund-category improvements (large-cap, ELSS, mid-cap mix).",
+    "Give one specific platform action (Zerodha Coin / Groww / Kuvera) this week.",
+  ].filter(Boolean).join("\n");
+}
+
+function sipMetrics(r: SipResult): Record<string, number | string> {
+  return {
+    monthlyAmount:    r.monthlyAmount,
+    totalInvested:    r.totalInvested,
+    estimatedReturns: r.estimatedReturns,
+    maturityValue:    r.maturityValue,
+    wealthRatio:      r.wealthRatio,
+    realValue:        r.realValue,
+    investmentYears:  r.investmentYears,
+    annualReturnRate: r.annualReturnRate,
+    stepUpPercent:    r.stepUpPercent,
+    inflationRate:    r.inflationRate,
+    milestonesText:   r.milestones.map((m) => `${m.label} at year ${m.year}`).join(", "),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -676,20 +837,24 @@ const SipSchema = z.object({
 // ROUTE HANDLERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Generic wrapper: validate → calculate → AI advice → respond */
+/**
+ * Generic wrapper: validate → calculate → AI advice → respond
+ * Response shape: { calculation_result, ai_advice }
+ */
 async function handleCalc<T, R>(
   req: any, res: any,
   schema: z.ZodType<T>,
-  calcFn: (input: T) => R,
-  promptFn: (result: R) => string,
-  endpoint: string,
+  calcFn:    (input: T) => R,
+  promptFn:  (result: R) => string,
+  metricsFn: (result: R) => Record<string, number | string>,
+  type: CalculatorType,
 ): Promise<void> {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
       error: "Validation failed",
       details: parsed.error.issues.map((i: any) => ({
-        field: i.path.join(".") || "body",
+        field:   i.path.join(".") || "body",
         message: i.message,
       })),
     });
@@ -697,33 +862,34 @@ async function handleCalc<T, R>(
   }
 
   try {
-    const result = calcFn(parsed.data);
-    const prompt = promptFn(result);
+    const calculation_result = calcFn(parsed.data);
+    const prompt   = promptFn(calculation_result);
+    const metrics  = metricsFn(calculation_result);
 
-    logger.info({ endpoint }, "Running AI advice for calculation result");
-    const aiAdvice = await generateAiResponse(KNOWEDGE_SYSTEM_PROMPT, prompt, []);
+    logger.info({ type }, "Generating structured AI advice for calculator result");
+    const ai_advice = await generateCalculatorAdvice(type, prompt, metrics);
 
-    res.json({ result, aiAdvice });
+    res.json({ calculation_result, ai_advice });
   } catch (err) {
-    logger.error({ err, endpoint }, "Calculation or AI error");
+    logger.error({ err, type }, "Calculation or AI error");
     res.status(500).json({ error: "Internal calculation error", detail: String(err) });
   }
 }
 
 router.post("/calculate/pocket-money", (req, res) =>
-  handleCalc(req, res, PocketMoneySchema, calcPocketMoney, pocketMoneyPrompt, "/calculate/pocket-money"),
+  handleCalc(req, res, PocketMoneySchema, calcPocketMoney, pocketMoneyPrompt, pocketMoneyMetrics, "pocket-money"),
 );
 
 router.post("/calculate/salaried", (req, res) =>
-  handleCalc(req, res, SalariedSchema, calcSalaried, salariedPrompt, "/calculate/salaried"),
+  handleCalc(req, res, SalariedSchema, calcSalaried, salariedPrompt, salariedMetrics, "salaried"),
 );
 
 router.post("/calculate/retired", (req, res) =>
-  handleCalc(req, res, RetiredSchema, calcRetired, retiredPrompt, "/calculate/retired"),
+  handleCalc(req, res, RetiredSchema, calcRetired, retiredPrompt, retiredMetrics, "retired"),
 );
 
 router.post("/calculate/sip", (req, res) =>
-  handleCalc(req, res, SipSchema, calcSip, sipPrompt, "/calculate/sip"),
+  handleCalc(req, res, SipSchema, calcSip, sipPrompt, sipMetrics, "sip"),
 );
 
 export default router;
