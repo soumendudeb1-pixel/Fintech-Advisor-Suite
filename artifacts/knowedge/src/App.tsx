@@ -12,6 +12,7 @@ import Stocks from "@/pages/stocks";
 import Calculator from "@/pages/calculator";
 import Learn from "@/pages/learn";
 import Advisor from "@/pages/advisor";
+import { FloatingChat } from "@/components/floating-chat";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ function App() {
             <TooltipProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                 <Router />
+                <FloatingChat />
               </WouterRouter>
               <Toaster />
             </TooltipProvider>
